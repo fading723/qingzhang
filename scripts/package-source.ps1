@@ -1,28 +1,25 @@
+[CmdletBinding()]
+param([string]$Ref = 'HEAD')
+
 $ErrorActionPreference = 'Stop'
-$workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$workspace = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$commit = & git -C $workspace rev-parse --verify --end-of-options ($Ref + '^{commit}')
+if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40,64}$') {
+  throw 'Choose a committed Git revision to package.'
+}
+$packageText = & git -C $workspace show ($commit + ':package.json')
+if ($LASTEXITCODE -ne 0) { throw 'The selected commit has no package.json.' }
+$version = ($packageText -join "`n" | ConvertFrom-Json).version
+if ($version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'Invalid release version.' }
+
 $artifactDirectory = Join-Path $workspace 'artifacts'
 New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
-$destination = Join-Path $artifactDirectory 'qingzhang-1.0.0-source.zip'
-$sourcePaths = @(
-  'App.tsx', 'index.ts', 'app.config.ts', 'metro.config.js', 'eas.json',
-  'package.json', 'package-lock.json', 'tsconfig.json', 'README.md',
-  '.gitignore', '.prettierrc.json', '.prettierignore',
-  'src', 'assets', 'plugins', 'scripts', 'tests', 'docs', 'examples'
-)
-Add-Type -AssemblyName System.IO.Compression
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Force }
-$archive = [System.IO.Compression.ZipFile]::Open($destination, [System.IO.Compression.ZipArchiveMode]::Create)
-try {
-  foreach ($source in $sourcePaths) {
-    $absolute = Join-Path $workspace $source
-    if (-not (Test-Path -LiteralPath $absolute)) { continue }
-    $item = Get-Item -LiteralPath $absolute
-    $files = if ($item.PSIsContainer) { Get-ChildItem -LiteralPath $absolute -Recurse -File -Force } else { @($item) }
-    foreach ($file in $files) {
-      $relative = $file.FullName.Substring($workspace.Length + 1).Replace('\', '/')
-      [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $relative, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
-    }
-  }
-} finally { $archive.Dispose() }
+$destination = Join-Path $artifactDirectory ("qingzhang-$version-source.zip")
+$candidate = $destination + '.candidate'
+
+# Archive only the reviewed Git tree, never local logs, signing keys, or untracked backups.
+& git -C $workspace archive --format=zip ("--prefix=qingzhang-$version/") ("--output=$candidate") $commit
+if ($LASTEXITCODE -ne 0) { throw 'Git source archive failed; the previous archive was left intact.' }
+Move-Item -LiteralPath $candidate -Destination $destination -Force
 Get-Item -LiteralPath $destination | Select-Object FullName, Length
+Write-Output "Source commit: $commit"

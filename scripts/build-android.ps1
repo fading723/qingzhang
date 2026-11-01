@@ -262,6 +262,11 @@ android {
   $badging = & $aapt dump badging $candidate
   if ($LASTEXITCODE -ne 0 -or -not ($badging -match "package: name='com\.qingzhang\.app'")) { throw 'APK package identity verification failed' }
   if ($badging -match '^application-debuggable') { throw 'Unexpected debuggable flag in the release APK' }
+  foreach ($forbiddenPermission in @('READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'SYSTEM_ALERT_WINDOW')) {
+    if ($badging -match ('uses-permission[^\n]*android\.permission\.' + $forbiddenPermission + "'")) {
+      throw "Unexpected permission in the APK: $forbiddenPermission"
+    }
+  }
   $manifestTree = & $aapt dump xmltree $candidate 'AndroidManifest.xml'
   if ($LASTEXITCODE -ne 0 -or -not ($manifestTree -match 'android:allowBackup.*=\(type 0x12\)0x0\s*$')) { throw 'APK backup exclusion verification failed' }
   # AAPT optimizes resource filenames; resolve XML paths through its resource table.
@@ -292,7 +297,7 @@ android {
       }
     }
   }
-  $verification = @("Standalone Hermes bundle: $bundleBytes bytes; bytecode magic verified", "Native libraries: $nativeEntries", "Embedded icon fonts: $fontEntries", 'Signature: verified', 'android:allowBackup=false: verified', 'Backup XML: legacy/cloud/device-transfer exclude root,file,database,sharedpref,external', 'Release debuggable flag: absent') + @($badging | Where-Object { $_ -match '^(package:|sdkVersion:|targetSdkVersion:|application-label:|native-code:)' })
+  $verification = @("Standalone Hermes bundle: $bundleBytes bytes; bytecode magic verified", "Native libraries: $nativeEntries", "Embedded icon fonts: $fontEntries", 'Signature: verified', 'android:allowBackup=false: verified', 'Backup XML: legacy/cloud/device-transfer exclude root,file,database,sharedpref,external', 'Release debuggable flag: absent', 'Unneeded storage and overlay permissions: absent') + @($badging | Where-Object { $_ -match '^(package:|sdkVersion:|targetSdkVersion:|application-label:|native-code:)' })
   $hash = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant()
   ($verification + "SHA256: $hash") | Set-Content -LiteralPath ($candidate + '.verification.txt') -Encoding utf8
   $hash | Set-Content -LiteralPath ($candidate + '.sha256') -Encoding ascii
