@@ -1,0 +1,53 @@
+{
+  "name": "qingzhang",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "export:web": "expo export --platform web",
+    "preview": "node scripts/serve-ui.cjs dist 4173",
+    "build:android": "npx eas-cli build --platform android --profile preview",
+    "build:ios": "npx eas-cli build --platform ios --profile preview",
+    "test:ui": "node scripts/ui-smoke.cjs",
+    "test:performance": "node scripts/performance-smoke.cjs"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~58.0.16",
+    "@expo/vector-icons": "^15.0.2",
+    "@react-native-community/datetimepicker": "9.2.1",
+    "expo": "~58.0.22",
+    "expo-document-picker": "~58.0.4",
+    "expo-file-system": "~58.0.13",
+    "expo-font": "~58.0.11",
+    "expo-linear-gradient": "~58.0.3",
+    "expo-notifications": "~58.1.7",
+    "expo-sharing": "~58.0.21",
+    "expo-splash-screen": "~58.0.12",
+    "expo-sqlite": "~58.0.15",
+    "expo-status-bar": "~58.0.4",
+    "expo-system-ui": "~58.0.7",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-svg": "15.16.0",
+    "react-native-web": "^0.21.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "~19.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "glob": "14.0.3",
+    "minimatch": "11.0.2"
+  }
+}
